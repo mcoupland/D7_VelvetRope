@@ -1,0 +1,27 @@
+<?php
+/**
+ * Implements hook_schema().
+ */
+function velvetrope_schema() {
+	$schema['velvetrope_entries'] = array(
+		'description' => 'Store pages viewed by anonymous user.',
+		'fields' => array(
+			'ipaddress' => array(
+				'type' => 'varchar',
+				'length' => '255',
+				'description' => 'The IP address of the anonymous user.',
+			),
+			'pagenid' => array(
+				'type' => 'int',
+				'description' => 'The page the anonymous user visited.',
+			),
+			'dateviewed' => array(
+				'type' => 'int',
+				'size' => 'big',
+				'description' => 'The date the anonymous user visited the page, used to calculate unlock.',
+			),
+		),
+    );
+	return $schema;
+}
+

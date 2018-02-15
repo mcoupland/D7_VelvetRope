@@ -1,0 +1,4 @@
+name = velvetrope Module
+description = Restrict users to X views of private pages before popping a join message
+core = 7.x
+files[] = velvetrope.module
