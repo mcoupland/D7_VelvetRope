@@ -28,3 +28,51 @@ function velvetrope_node_view($node, $view_mode, $langcode) {
 	}
 }
 
+
+/**
+ * Implements hook_menu().
+ */
+function velvetrope_menu() {
+  $items['admin/config/velvetrope'] = 
+	array(
+		'title' => 'velvetrope message configure',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('velvetrope_form'),
+		'access arguments' => array('administer users'),
+		'type' => MENU_NORMAL_ITEM,
+		'menu_name' => 'velvetrope',
+	);
+ 
+  return $items;
+}
+  
+ /**
+ * Admin form to configurable velvetrope
+ */
+function velvetrope_form($form, &$form_state) {
+	$form['velvetrope_count'] = array(
+		'#type' => 'textarea',
+		'#title' => t('Anonymous Views'),
+		'#rows' => 1,
+		'#required' => TRUE,
+		'#default_value' => variable_get('velvetrope_anonymous_views', '3')
+	);
+	
+	$form['velvetrope_timespan'] = array(
+		'#type' => 'textarea',
+		'#title' => t('Time Span'),
+		'#rows' => 1,
+		'#required' => TRUE,
+		'#default_value' => variable_get('velvetrope_timespan', '1')
+	);
+	
+	$form['velvetrope_redirectto'] = array(
+		'#type' => 'textarea',
+		'#title' => t('Velvet Rope Redirect Page'),
+		'#rows' => 1,
+		'#required' => TRUE,
+		'#default_value' => variable_get('velvetrope_rediredirect', '<login>'),
+	);
+	
+	return system_settings_form($form);
+}
