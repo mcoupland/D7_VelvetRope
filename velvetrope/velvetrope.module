@@ -2,59 +2,69 @@
 /**
  * Implements hook_node_view().
  */
-function velvetrope_init() {	
-	if(current_path() == 'user'){return;}
-	if(current_path() == variable_get('velvetrope_redirectto'))
-	{	
+function velvetrope_init() {
+	//velvetrope_delete_entries();	
+	if(current_path() == 'user' || current_path() == variable_get('velvetrope_redirectto')){	
 		return;
 	}
 	if(user_is_anonymous()){			
-		$result = db_select('velvetrope_entries', 've')
-						->fields('ve')
-						->condition('ipaddress', $_SERVER['REMOTE_ADDR'], '=')
-						->orderby('dateviewed', 'DESC')
-						->execute()
-						->fetchAll();	
-		drupal_set_message(print_r($result));
-		$mustregister = $result[count($result)-1]->mustregister;			
-		if($mustregister == 1)
-		{
-			drupal_set_message('3');
-			drupal_goto(variable_get('velvetrope_redirectto'));
-		}
-		else{
-			drupal_set_message('4');
-			drupal_set_message(print_r('mustregister this'));
-			if(count($result)-1 > variable_get('velvetrope_anonymousviews'))
-			{
-				drupal_set_message('5');
-				$mustregister = 1;
-				// $secondsinday = 86400;
-				// $days = db_select('variable', 'v')
-						// ->addField('v', 'velvetrope_count')
-						// ->execute()
-						// ->fetchAssoc();
-				// $timesincelast = $secondsinday * $days;
-				// $mustregister = 1;
+		$numviews = velvetrope_get_entries();
+		$mustregister = count($numviews) > variable_get('velvetrope_anonymousviews') ? 1 : 0;			
+		if($mustregister == 0){
+			if(velvetrope_has_expired() == TRUE){
+				$mustregister = 0;
+				velvetrope_delete_entries();
 			}
-			drupal_set_message('6');
-			db_insert('velvetrope_entries')
-				->fields(array('ipaddress' => $_SERVER['REMOTE_ADDR'], 'dateviewed' => REQUEST_TIME, 'mustregister' => 1))
-				->execute();
 		}	
-			
-		if($mustregister == 1)
-		{
-			drupal_set_message('7');
+		velvetrope_insert_entry($mustregister);
+		if($mustregister == 1){
 			drupal_goto(variable_get('velvetrope_redirectto'));
-			db_delete('velvetrope_entries')
-				->condition('ipaddress', $_SERVER['REMOTE_ADDR'])
-				->execute();
 		}			
 	}
 }
 
+function velvetrope_get_entries(){
+	return db_select('velvetrope_entries', 've')
+			->fields('ve')
+			->condition('ipaddress', $_SERVER['REMOTE_ADDR'], '=')
+			->orderby('dateviewed', 'DESC')
+			->execute()
+			->fetchAll();	
+}
 
+function velvetrope_delete_entries(){
+	return db_delete('velvetrope_entries')
+		->condition('ipaddress', $_SERVER['REMOTE_ADDR'])
+		->execute();
+}
+
+function velvetrope_get_lastdateviewed(){
+	return db_select('velvetrope_entries', 've')
+			->fields('ve')
+			->condition('ipaddress', $_SERVER['REMOTE_ADDR'])
+			->orderby('dateviewed', 'DESC')
+			->execute()
+			->fetchObject()->dateviewed;
+}
+
+function velvetrope_insert_entry($mustregister){
+	db_insert('velvetrope_entries')
+		->fields(array('ipaddress' => $_SERVER['REMOTE_ADDR'], 'dateviewed' => REQUEST_TIME, 'mustregister' => $mustregister))
+		->execute();
+}
+
+function velvetrope_has_expired(){
+	return FALSE;
+	
+	$secondsinday = 86400;
+	$dateviewed = velvetrope_get_lastdateviewed();
+	return $secondsinday * variable_get('velvetrope_timespan');	
+	$timespan = velvetrope_calculate_timespan();
+	if(REQUEST_TIME - $dateviewed > $timespan){	
+		return TRUE;
+	}
+	return FALSE;
+}
 /**
  * Implements hook_menu().
  */
