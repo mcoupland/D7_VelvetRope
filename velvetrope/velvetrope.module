@@ -2,29 +2,55 @@
 /**
  * Implements hook_node_view().
  */
-function velvetrope_node_view($node, $view_mode, $langcode) {
-	if($GLOBALS['user']->uid){
-		
-		db_insert('velvetrope_entries')
-			->fields(array('ipaddress' => $_SERVER['REMOTE_ADDR'], 'pagenid' => $node->nid, 'dateviewed' => REQUEST_TIME))
-			->execute();
-		$secondsinday = 86400;
-		
+function velvetrope_init() {	
+	if(current_path() == 'user'){return;}
+	if(current_path() == variable_get('velvetrope_redirectto'))
+	{	
+		return;
+	}
+	if(user_is_anonymous()){			
 		$result = db_select('velvetrope_entries', 've')
-		->fields('ve')
-		->condition('ipaddress', $_SERVER['REMOTE_ADDR'], '=')
-		->orderby('dateviewed', 'DESC')
-		->execute()
-		->fetchAll();
-		
-		if(count($result) > 3)
+						->fields('ve')
+						->condition('ipaddress', $_SERVER['REMOTE_ADDR'], '=')
+						->orderby('dateviewed', 'DESC')
+						->execute()
+						->fetchAll();	
+		drupal_set_message(print_r($result));
+		$mustregister = $result[count($result)-1]->mustregister;			
+		if($mustregister == 1)
 		{
-			drupal_set_message(t('here again?'));
-		}		
-		else
-		{
-			drupal_set_message(t('that\'s another.'));
+			drupal_set_message('3');
+			drupal_goto(variable_get('velvetrope_redirectto'));
 		}
+		else{
+			drupal_set_message('4');
+			drupal_set_message(print_r('mustregister this'));
+			if(count($result)-1 > variable_get('velvetrope_anonymousviews'))
+			{
+				drupal_set_message('5');
+				$mustregister = 1;
+				// $secondsinday = 86400;
+				// $days = db_select('variable', 'v')
+						// ->addField('v', 'velvetrope_count')
+						// ->execute()
+						// ->fetchAssoc();
+				// $timesincelast = $secondsinday * $days;
+				// $mustregister = 1;
+			}
+			drupal_set_message('6');
+			db_insert('velvetrope_entries')
+				->fields(array('ipaddress' => $_SERVER['REMOTE_ADDR'], 'dateviewed' => REQUEST_TIME, 'mustregister' => 1))
+				->execute();
+		}	
+			
+		if($mustregister == 1)
+		{
+			drupal_set_message('7');
+			drupal_goto(variable_get('velvetrope_redirectto'));
+			db_delete('velvetrope_entries')
+				->condition('ipaddress', $_SERVER['REMOTE_ADDR'])
+				->execute();
+		}			
 	}
 }
 
@@ -50,12 +76,12 @@ function velvetrope_menu() {
  * Admin form to configurable velvetrope
  */
 function velvetrope_form($form, &$form_state) {
-	$form['velvetrope_count'] = array(
+	$form['velvetrope_anonymousviews'] = array(
 		'#type' => 'textarea',
 		'#title' => t('Anonymous Views'),
 		'#rows' => 1,
 		'#required' => TRUE,
-		'#default_value' => variable_get('velvetrope_anonymous_views', '3')
+		'#default_value' => variable_get('velvetrope_anonymousviews', '3')
 	);
 	
 	$form['velvetrope_timespan'] = array(
@@ -71,7 +97,7 @@ function velvetrope_form($form, &$form_state) {
 		'#title' => t('Velvet Rope Redirect Page'),
 		'#rows' => 1,
 		'#required' => TRUE,
-		'#default_value' => variable_get('velvetrope_rediredirect', '<login>'),
+		'#default_value' => variable_get('velvetrope_redirectto', 'user/register'),
 	);
 	
 	return system_settings_form($form);
